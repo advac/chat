@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8">
+		<title>SMS</title>
+		<link rel="stylesheet" media="screen" type="text/css" href="monstyle.css"/>
+		<style>
+			div, textarea, p
+			{
+				display: block;
+				width: 60%;
+				padding: 10px;
+			}
+			div
+			{
+				height: 50%;
+				background-color: "grey";
+				padding: 10px;
+			}
+		</style>
+	</head>
+<body>
+<h1>Je suis le serveur:</h1>
+<input type="text" id="client1" value="2" style="display: none;"/>
+<input type="text" id="serveur1" value="1" style="display: none;"/>
+<textarea name="message" id="message" rows="2" cols="50">
+</textarea>
+<input type="button" value="Répondre au Client" onclick="onclickClient();"/>
+<div name="messages" id="messages" >
+</div>
+<script language="JavaScript" type="text/javascript">
+	Element.prototype.insertChildAtIndex = function(child, index) 
+	{
+		if(!index)
+		{
+			index = 0;
+		}
+		if(index >= this.children.length) 
+		{
+			this.appendChild(child);
+		} 
+		else 
+		{
+			this.insertBefore(child, this.children[index]);
+		}
+	}
+	function onclickClient()
+	{
+    	if(document.getElementById("message").value != "")
+		{
+			var txt = "";
+			var p = document.createElement("p");
+			p.style.float = "right";
+			p.style.backgroundColor = "#F0FFF0";
+			p.style.border = "0px";
+			p.style.padding = "10px";
+			var id = document.getElementById("client1").value;
+			var mess = document.getElementById("message").value;
+			var time = new Date().toISOString().slice(0, 19).replace('T', ' ');
+			var id2 = document.getElementById("serveur1").value;
+			txt = document.createTextNode("Moi (" + String(time) + ") : " + document.getElementById("message").value);
+			p.appendChild(txt);
+			document.getElementById("messages").insertChildAtIndex(p, 0);
+			document.getElementById("message").value = "";
+			envoyermessage(id, mess, time, id2);
+		}
+	}
+	function onclickServeur(mess, time)
+	{
+    	var txt = "";
+		var p = document.createElement("p");
+		p.style.float = "left";
+		p.style.backgroundColor = "#E0FFFF";
+		p.style.border = "0px";
+		p.style.padding = "10px";
+		var id = document.getElementById("serveur1").value; 
+		txt = document.createTextNode("Réponse (" + String(time) + ") : " + mess); 
+		p.appendChild(txt);
+		document.getElementById("messages").insertChildAtIndex(p, 0);
+	}
+	//fonction de création d'un objet XMLHttpRequest en fonction du navigateur (compatibilité/version) 
+	function createXHR()
+	{
+		var result = null;
+		try
+		{
+			result = new XMLHttpRequest();
+		}
+		catch(Error)
+		{
+			try
+			{
+				result = new ActiveXObject('Msxml2.XMLHTTP');
+			}
+			catch(Error)
+			{
+				try
+				{
+					result = new ActiveXObject('Microsoft.XMLHTTP');
+				}
+				catch(Error)
+				{
+					result = null;
+				}
+			}
+		}
+		return result;
+	}
+	function envoyermessage(id, mess, time, id2)
+	{
+		var XMLHttp = createXHR();
+		var objetJS = new Object();
+		objetJS.id = id;
+		objetJS.mess = mess;
+		objetJS.time = time;
+		objetJS.id2 = id2;
+		var parametres = JSON.stringify(objetJS);
+		XMLHttp.open('POST', 'http://localhost/chat/nouveaumessage.php');
+		XMLHttp.onreadystatechange = handlerFunction;
+		XMLHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+		XMLHttp.send(parametres);
+		function handlerFunction() 
+		{	//définition de la fonction callback
+			if(XMLHttp.readyState == 4)		
+			{	
+				if(XMLHttp.status == 200)
+				{   //traitement à effectuer en retour de requête
+				}
+			}
+		}
+	}
+	function liremessage()
+	{
+		var XMLHttp = createXHR();
+		var objetJS = new Object();
+		objetJS.id2 = document.getElementById("serveur1").value;;
+		var parametres = JSON.stringify(objetJS);
+		XMLHttp.open('POST', 'http://localhost/chat/autremessage.php');
+		XMLHttp.onreadystatechange = handlerFunction;
+		XMLHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+		XMLHttp.send(parametres);
+		function handlerFunction() 
+		{	//définition de la fonction callback
+			if(XMLHttp.readyState == 4)			
+			{	
+				if(XMLHttp.status == 200)
+				{   //traitement à effectuer en retour de requête
+					var nouveauResultat = XMLHttp.responseText; //préparation de l'objet de réception de données JSON
+					var nouvelObjetJSON = JSON.parse(nouveauResultat); //analyse du contenu suivant le formatage JSON
+					var id2 = nouvelObjetJSON.id2;
+					var mess;
+					var time;
+					var indice = 0; //indice permettant de parcourir tous les éléments de l'objet JSON retourné
+					if(nouvelObjetJSON.datas.length != 0)
+					{
+						while(indice < nouvelObjetJSON.datas.length)
+						{	//parcours de tous les éléments contenus dans l'objet JSON
+							mess = nouvelObjetJSON.datas[indice]['mess'];
+							time = nouvelObjetJSON.datas[indice]['time'];
+							onclickServeur(mess, time);
+							indice++; //passage à l'indice suivant
+						}
+					}
+				}
+			}
+		}
+	}
+	var autreMessage = setInterval(liremessage, 5000);
+</script>
+</body>
+</html>
